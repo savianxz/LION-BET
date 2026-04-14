@@ -19,13 +19,44 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage({ type: 'error', text: error.message })
     } else {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({ email, password })
+
       if (error) {
         setMessage({ type: 'error', text: error.message })
-      } else {
-        setMessage({ type: 'success', text: 'Account created! Check your email or sign in.' })
-        setMode('login')
+        setLoading(false)
+        return
       }
+
+      if (!data.user?.id || !data.user.email) {
+        setMessage({ type: 'error', text: 'Signup succeeded but user data is missing. Please try again.' })
+        setLoading(false)
+        return
+      }
+
+      const registerResponse = await fetch('/api/auth/register-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: data.user.id,
+          email: data.user.email,
+        }),
+      })
+
+      const registerPayload = (await registerResponse.json()) as { error?: string }
+
+      if (!registerResponse.ok) {
+        setMessage({
+          type: 'error',
+          text: registerPayload.error || 'Unable to create user profile. Please try again.',
+        })
+        setLoading(false)
+        return
+      }
+
+      setMessage({ type: 'success', text: 'Account created! Check your email or sign in.' })
+      setMode('login')
     }
     setLoading(false)
   }
