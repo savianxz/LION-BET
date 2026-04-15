@@ -1,32 +1,46 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function Auth() {
+  const router = useRouter()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
+  const handleRegister = async () => {
+    const { error } = await supabase.auth.signUp({ email, password })
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message })
+    } else {
+      setMessage({ type: 'success', text: 'Usuário criado. Confira seu e-mail ou faça login.' })
+      setMode('login')
+    }
+  }
+
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (error) {
+      setMessage({ type: 'error', text: error.message })
+    } else {
+      router.push('/dashboard')
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage(null)
 
-    if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setMessage({ type: 'error', text: error.message })
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        setMessage({ type: 'error', text: error.message })
-      } else {
-        setMessage({ type: 'success', text: 'Account created! Check your email or sign in.' })
-        setMode('login')
-      }
-    }
+    if (mode === 'login') await handleLogin()
+    else await handleRegister()
+
     setLoading(false)
   }
 
